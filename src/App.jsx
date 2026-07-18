@@ -4,8 +4,8 @@ function App() {
   return (
     <>
       <RandomVisualizer />
-      <a href="/pgp-key.asc" className="pgp-key-link" title="PGP public key">
-        PGP
+      <a href="/ident.txt" className="pgp-key-link" title="identity & PGP key">
+        ident
       </a>
     </>
   );

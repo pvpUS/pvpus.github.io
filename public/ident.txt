@@ -1,3 +1,15 @@
+IDENTITY
+
+handle:    pvps
+email:     pvp@pvp.dog
+discord:   pvpus
+telegram:  t.me/pvps64
+twitter:   x.com/pvps64
+
+fingerprint: 89D3 ABEB A9AD 29CE 078A  95DF 6F3C 050C FD71 342C
+
+---
+
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 
 mQINBGpbrk0BEADTCriJAKM4+EuhY+UblpAbb+R0QUvi2jLsfWuCbSmkD/ZgCb4F
