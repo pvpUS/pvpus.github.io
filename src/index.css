@@ -1,0 +1,37 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+.random-visualizer {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pgp-key-link {
+  position: fixed;
+  right: 8px;
+  bottom: 6px;
+  font-family: monospace;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: #fff;
+  opacity: 0.08;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.pgp-key-link:hover {
+  opacity: 0.6;
+}
