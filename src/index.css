@@ -26,7 +26,7 @@ html, body {
   font-size: 11px;
   letter-spacing: 0.05em;
   color: #fff;
-  opacity: 0.08;
+  opacity: 0.2;
   text-decoration: none;
   transition: opacity 0.2s ease;
   z-index: 10;
