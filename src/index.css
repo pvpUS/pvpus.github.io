@@ -35,3 +35,121 @@ html, body {
 .pgp-key-link:hover {
   opacity: 0.6;
 }
+
+.coin100-link {
+  left: 8px;
+  right: auto;
+}
+
+.coin100-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5vh 5vw;
+}
+
+.coin100-panel {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  max-height: 90vh;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 1.25rem 1.5rem;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #fff;
+  color: #fff;
+  font-family: monospace;
+}
+
+.coin100-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.coin100-header h1 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: normal;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.coin100-close {
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  font-family: monospace;
+  font-size: 1rem;
+  line-height: 1;
+  color: #fff;
+  background: transparent;
+  border: 1px solid #fff;
+  cursor: pointer;
+}
+
+.coin100-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.coin100-status {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.coin100-error {
+  color: #ff8a8a;
+}
+
+.coin100-table-wrap {
+  overflow-x: auto;
+}
+
+.coin100-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.coin100-table th,
+.coin100-table td {
+  padding: 0.3rem 0.5rem;
+  text-align: right;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.coin100-table th {
+  font-weight: normal;
+  opacity: 0.8;
+}
+
+.coin100-row-label {
+  position: sticky;
+  left: 0;
+  text-align: left;
+  background: rgba(10, 10, 12, 0.92);
+}
+
+.coin100-rank {
+  opacity: 0.6;
+}
+
+.coin100-sum {
+  font-weight: bold;
+}
+
+.coin100-meta {
+  margin-top: 0.75rem;
+  font-size: 0.7rem;
+  opacity: 0.6;
+}

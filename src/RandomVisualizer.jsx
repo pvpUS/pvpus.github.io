@@ -14,6 +14,11 @@ const EDGE_HOLD_TICKS = 8; // ticks a line stays fully bright once lit
 const EDGE_VISIBLE_FRACTION = 0.25; // configurable: target fraction of lines visible (any brightness) at any given moment
 const DOT_OPACITY = 0.5; // configurable: opacity of the permanent vertex-dot layer
 const EDGE_OPACITY = 0.5; // configurable: opacity of the connector lines
+const PAN_LAYER_MODULUS = 3; // splits stars into a 1-in-3 "strong" group and a 2-in-3 "other" group
+const MAX_PAN_PX_STRONG = 28; // how far the strong-pan layer can drift from its home position
+const MAX_PAN_PX_OTHER = 22; // how far the other layer can drift — slightly less than the strong layer
+const MAX_PAN_PX_SHAPE = 18; // how far the vertex-dot/connecting-line overlay can drift
+const PAN_SMOOTHING = 0.05; // per-tick lerp factor toward the mouse-driven target offset
 
 function randomPeak() {
   return PEAK_MIN + Math.floor(Math.random() * (PEAK_MAX - PEAK_MIN + 1));
@@ -84,6 +89,19 @@ export default function RandomVisualizer() {
     const touchedCells = [];
     let dotCellSet = new Set();
     let tickCount = 0;
+    // Which group each cell belongs to (~1 in PAN_LAYER_MODULUS is "strong",
+    // the rest are "other"), and the current mouse-driven offset for each group.
+    let panLayer;
+    let mouseX, mouseY;
+    let panXStrong, panYStrong, panXOther, panYOther;
+    // Mouse-driven offset applied to the vertex-dot/connecting-line overlay
+    // (rounded to pixels at draw time in drawDots/drawEdges).
+    let panXShape, panYShape;
+
+    function handleMouseMove(e) {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    }
 
     // Vertex dots live at fixed grid cells (recomputed whenever the dot set or
     // grid size changes) so drawEdges can tell which cells to merge into
@@ -102,17 +120,21 @@ export default function RandomVisualizer() {
     // DOT_OPACITY, alpha-blended over whatever's underneath) so the shape's
     // dot outline stays visible regardless of how many lines are faded in.
     function drawDots() {
+      const offsetX = Math.round(panXShape);
+      const offsetY = Math.round(panYShape);
       for (const dot of dots) {
         const gx = Math.round(gridWidth / 2 + dot.x);
         const gy = Math.round(gridHeight / 2 + dot.y);
         if (gx < 0 || gx >= gridWidth || gy < 0 || gy >= gridHeight) continue;
-        const x0 = gx * BLOCK_SIZE;
-        const y0 = gy * BLOCK_SIZE;
+        const x0 = gx * BLOCK_SIZE + offsetX;
+        const y0 = gy * BLOCK_SIZE + offsetY;
+        const xStart = Math.max(x0, 0);
+        const yStart = Math.max(y0, 0);
         const yMax = Math.min(y0 + BLOCK_SIZE, height);
         const xMax = Math.min(x0 + BLOCK_SIZE, width);
-        for (let py = y0; py < yMax; py++) {
-          let o = (py * width + x0) * 4;
-          for (let px = x0; px < xMax; px++) {
+        for (let py = yStart; py < yMax; py++) {
+          let o = (py * width + xStart) * 4;
+          for (let px = xStart; px < xMax; px++) {
             data[o] = Math.round(dot.r * DOT_OPACITY + data[o] * (1 - DOT_OPACITY));
             data[o + 1] = Math.round(dot.g * DOT_OPACITY + data[o + 1] * (1 - DOT_OPACITY));
             data[o + 2] = Math.round(dot.b * DOT_OPACITY + data[o + 2] * (1 - DOT_OPACITY));
@@ -131,6 +153,8 @@ export default function RandomVisualizer() {
     // color. Cells only ever get brighter or dimmer smoothly as the
     // contributing weights shift, never jump-cut between colors.
     function drawEdges() {
+      const offsetX = Math.round(panXShape);
+      const offsetY = Math.round(panYShape);
       touchedCells.length = 0;
       for (const edge of edges) {
         const t = (tickCount + edge.phase) % EDGE_CYCLE_LENGTH;
@@ -169,13 +193,15 @@ export default function RandomVisualizer() {
         const mergeWithDot = dotCellSet.has(cellIdx);
         const gx = cellIdx % gridWidth;
         const gy = (cellIdx / gridWidth) | 0;
-        const x0 = gx * BLOCK_SIZE;
-        const y0 = gy * BLOCK_SIZE;
+        const x0 = gx * BLOCK_SIZE + offsetX;
+        const y0 = gy * BLOCK_SIZE + offsetY;
+        const xStart = Math.max(x0, 0);
+        const yStart = Math.max(y0, 0);
         const yMax = Math.min(y0 + BLOCK_SIZE, height);
         const xMax = Math.min(x0 + BLOCK_SIZE, width);
-        for (let py = y0; py < yMax; py++) {
-          let o = (py * width + x0) * 4;
-          for (let px = x0; px < xMax; px++) {
+        for (let py = yStart; py < yMax; py++) {
+          let o = (py * width + xStart) * 4;
+          for (let px = xStart; px < xMax; px++) {
             if (mergeWithDot) {
               data[o] = Math.max(data[o], r);
               data[o + 1] = Math.max(data[o + 1], g);
@@ -262,6 +288,21 @@ export default function RandomVisualizer() {
       edgeAccumB = new Float32Array(gridWidth * gridHeight);
       edgeAccumWeight = new Float32Array(gridWidth * gridHeight);
       edgeTouchTick = new Int32Array(gridWidth * gridHeight).fill(-1);
+      panLayer = new Uint8Array(gridWidth * gridHeight);
+      for (let gy = 0; gy < gridHeight; gy++) {
+        for (let gx = 0; gx < gridWidth; gx++) {
+          const hash = (gx * 73856093) ^ (gy * 19349663);
+          panLayer[gy * gridWidth + gx] = ((hash % PAN_LAYER_MODULUS) + PAN_LAYER_MODULUS) % PAN_LAYER_MODULUS;
+        }
+      }
+      mouseX = width / 2;
+      mouseY = height / 2;
+      panXStrong = 0;
+      panYStrong = 0;
+      panXOther = 0;
+      panYOther = 0;
+      panXShape = 0;
+      panYShape = 0;
       spawnAccumulator = 0;
       imageData = ctx.createImageData(width, height);
       data = imageData.data;
@@ -273,6 +314,33 @@ export default function RandomVisualizer() {
 
     function tick() {
       tickCount++;
+
+      // Smoothly ease each group's offset toward wherever the mouse
+      // currently is, so it drifts rather than snapping.
+      const targetPanXStrong = (mouseX / width - 0.5) * 2 * MAX_PAN_PX_STRONG;
+      const targetPanYStrong = (mouseY / height - 0.5) * 2 * MAX_PAN_PX_STRONG;
+      panXStrong += (targetPanXStrong - panXStrong) * PAN_SMOOTHING;
+      panYStrong += (targetPanYStrong - panYStrong) * PAN_SMOOTHING;
+      const offsetXStrong = Math.round(panXStrong);
+      const offsetYStrong = Math.round(panYStrong);
+
+      const targetPanXOther = (mouseX / width - 0.5) * 2 * MAX_PAN_PX_OTHER;
+      const targetPanYOther = (mouseY / height - 0.5) * 2 * MAX_PAN_PX_OTHER;
+      panXOther += (targetPanXOther - panXOther) * PAN_SMOOTHING;
+      panYOther += (targetPanYOther - panYOther) * PAN_SMOOTHING;
+      const offsetXOther = Math.round(panXOther);
+      const offsetYOther = Math.round(panYOther);
+
+      const targetPanXShape = (mouseX / width - 0.5) * 2 * MAX_PAN_PX_SHAPE;
+      const targetPanYShape = (mouseY / height - 0.5) * 2 * MAX_PAN_PX_SHAPE;
+      panXShape += (targetPanXShape - panXShape) * PAN_SMOOTHING;
+      panYShape += (targetPanYShape - panYShape) * PAN_SMOOTHING;
+
+      // Every star is painted in a second pass (see below) at its offset
+      // position rather than its home cell, so stash [x0, y0, r, g, b] for
+      // each one here instead of drawing it inline.
+      const panPixels = [];
+
       for (let i = 0, len = brightness.length; i < len; i++) {
         let b = brightness[i];
         if (rising[i]) {
@@ -295,14 +363,45 @@ export default function RandomVisualizer() {
         const gy = (i / gridWidth) | 0;
         const x0 = gx * BLOCK_SIZE;
         const y0 = gy * BLOCK_SIZE;
+
+        if (b > 0) {
+          if (panLayer[i] === 0) {
+            panPixels.push(x0 + offsetXStrong, y0 + offsetYStrong, r, g, bl);
+          } else {
+            panPixels.push(x0 + offsetXOther, y0 + offsetYOther, r, g, bl);
+          }
+        }
+        // Home cell always stays black; each star (if any) is painted at its
+        // offset position in the second pass instead.
         const yMax = Math.min(y0 + BLOCK_SIZE, height);
         const xMax = Math.min(x0 + BLOCK_SIZE, width);
         for (let py = y0; py < yMax; py++) {
           let o = (py * width + x0) * 4;
           for (let px = x0; px < xMax; px++) {
-            data[o] = r;
-            data[o + 1] = g;
-            data[o + 2] = bl;
+            data[o] = 0;
+            data[o + 1] = 0;
+            data[o + 2] = 0;
+            o += 4;
+          }
+        }
+      }
+
+      for (let p = 0; p < panPixels.length; p += 5) {
+        const x0 = panPixels[p];
+        const y0 = panPixels[p + 1];
+        const r = panPixels[p + 2];
+        const g = panPixels[p + 3];
+        const bl = panPixels[p + 4];
+        const xStart = Math.max(x0, 0);
+        const yStart = Math.max(y0, 0);
+        const xMax = Math.min(x0 + BLOCK_SIZE, width);
+        const yMax = Math.min(y0 + BLOCK_SIZE, height);
+        for (let py = yStart; py < yMax; py++) {
+          let o = (py * width + xStart) * 4;
+          for (let px = xStart; px < xMax; px++) {
+            data[o] = Math.max(data[o], r);
+            data[o + 1] = Math.max(data[o + 1], g);
+            data[o + 2] = Math.max(data[o + 2], bl);
             o += 4;
           }
         }
@@ -335,11 +434,13 @@ export default function RandomVisualizer() {
     if (prefersReducedMotion) {
       // Paint one static frame instead of continuously animating, then repaint
       // once the edge-scan overlay finishes loading so it's included too.
+      // Mouse-driven panning is skipped entirely here, per the user's motion preference.
       tick();
       edgeScanLoaded.then(() => tick());
       return () => window.removeEventListener('resize', resize);
     }
 
+    window.addEventListener('mousemove', handleMouseMove);
     const tickMs = Math.round((1000 / FPS) * SPEED_FACTOR);
     let intervalId = setInterval(tick, tickMs);
 
@@ -357,6 +458,7 @@ export default function RandomVisualizer() {
 
     return () => {
       window.removeEventListener('resize', resize);
+      window.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('visibilitychange', handleVisibility);
       clearInterval(intervalId);
     };
